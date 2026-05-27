@@ -1,0 +1,20 @@
+services:
+  db_server:
+    image: postgres:15
+
+    container_name: my_test_postgres
+
+    environment: 
+      - POSTGRES_USER=german
+      - POSTGRES_PASSWORD=german27
+      - POSTGRES_DB=projectgermany
+      - LANG=C.UTF-8
+
+    ports: 
+    - "5432:5432"
+  
+    volumes: 
+    - pgdata:/var/lib/postgresql/data 
+
+volumes:
+  pgdata:
