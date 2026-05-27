@@ -5,9 +5,9 @@ services:
     container_name: my_test_postgres
 
     environment: 
-      - POSTGRES_USER=german
-      - POSTGRES_PASSWORD=german27
-      - POSTGRES_DB=projectgermany
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
       - LANG=C.UTF-8
 
     ports: 
