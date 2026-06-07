@@ -1,6 +1,7 @@
 import asyncio 
 from playwright.async_api import async_playwright
 from fake_useragent import FakeUserAgent
+import re
 
 async def parser(brand : str, region = str| None):
     if region:
@@ -24,12 +25,26 @@ async def parser(brand : str, region = str| None):
             models_text = await models.inner_text()
             price_text = await price.inner_text()
             link = await models.get_attribute('href')
-            parsed.append({"model" : models_text.split(', '),
-             "price" : price_text.strip().replace('\xa0', ''), 
-             "link" : link})
+            parts = tuple(filter(None, re.split(r",|\s+", models_text)))
+
+            brand = parts[0]
+            year = parts[-1]
+            model = " ".join(parts[1:-1])
+            parsed.append({
+            "brand" : brand,
+            "model" : model,
+            "year" : year,
+            "price" : price_text.strip().replace('\xa0', ''), 
+            "link" : link
+            })
+
         print(parsed)
         print("Успешно")
         print(len(parsed))
+
+        for i in parsed:
+            if i['model'] == 'C-Class':
+                print(i)
 
         # for car in parsed:
         #     if int(car['price']) <= 200000 and int(car['model'][1]) >=2001:
@@ -38,5 +53,5 @@ async def parser(brand : str, region = str| None):
         await browser.close()
 
 
-asyncio.run(parser("mercedes-benz"))
+asyncio.run(parser("mercedes-benz", region="krasnodar"))
         
