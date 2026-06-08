@@ -2,11 +2,13 @@ import asyncio
 from playwright.async_api import async_playwright
 from fake_useragent import FakeUserAgent
 import re
+import json
 
-async def parser(brand : str, region = str| None):
-    if region:
+async def parser(brand : str, region : str| None = None):
+    if not region:  
+        url = f'https://auto.drom.ru/{brand}/'
+    else:
         url = f'https://auto.drom.ru/{region}/{brand}/all/'
-    url = f'https://auto.drom.ru/{brand}/'
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False, 
         args=["--disable-blink-features=AutomationControlled"])
@@ -16,10 +18,11 @@ async def parser(brand : str, region = str| None):
         await page.goto(url=url, wait_until='domcontentloaded')
         await page.wait_for_selector('[data-ftid="bulls-list_bull"]', timeout=10000)
         card = await page.locator('[data-ftid="bulls-list_bull"]').all()
+        
         print(f"Найдено карт {len(card)}")
 
         parsed = []
-        for car in card[:19]:
+        for car in card:
             models = car.locator('[data-ftid="bull_title"]')
             price = car.locator('[data-ftid="bull_price"]')
             models_text = await models.inner_text()
@@ -38,8 +41,10 @@ async def parser(brand : str, region = str| None):
             "link" : link
             })
 
-        print(parsed)
-        print("Успешно")
+        with open('data/info_cars.json', 'w', encoding='utf-8') as f:
+            data = json.dump(parsed, f, indent=2)
+            
+
         print(len(parsed))
 
         for i in parsed:
@@ -53,5 +58,8 @@ async def parser(brand : str, region = str| None):
         await browser.close()
 
 
-asyncio.run(parser("mercedes-benz", region="krasnodar"))
+
+if __name__ == "__main__":
+    asyncio.run(parser("mercedes-benz", region="krasnodar"))
         
+
