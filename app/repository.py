@@ -1,10 +1,9 @@
-from sqlalchemy import select, exists, update
+from sqlalchemy import select, exists, update, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User 
 from app.models.add_cars import AdsCar
 from app.schemas.user import UserOut
 import logging
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +39,17 @@ class Repository:
             return None
         
         
-    async def add_token(self, token : str, email : str) -> True | None:
+    async def add_token(self, token : str, email : str) -> bool:
         query = update(User).where(User.email == email).values(refresh_token=token)
-        pass
+        try:
+            await self.session.execute(query)
+            await self.session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Ошибка при обновление токена для {email}: {e}")
+            return False
 
-
-    async def add_cars(self, ) -> True | None:
-        with open('data/data_cars.json', 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            
+    async def add_cars(self, data : list) -> bool:
         if not data:
             return False
         
@@ -58,13 +59,28 @@ class Repository:
             brand=car['brand'],
             model=car['model'],
             price=car['price'],
-            url=car['link'])
-            for car in data]
+            url=car['link']
+            )
+            for car in data
+        ]
         
-        async with self.session.begin():
-            self.session.add_all(add_car)
-            
-        return True
+
+        if not add_car:
+            return False
+        
+        
+        try:
+            async with self.session.begin():
+                self.session.add_all(add_car)
+            return True
+    
+
+        except Exception as e:
+
+            logger.error(f"Ошибка при пакетном добавлении авто в БД: {e}")
+
+            return False
+       
 
             
         

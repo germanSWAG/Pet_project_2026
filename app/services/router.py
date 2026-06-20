@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.services.dependencies import get_auth_service
+from app.services.dependencies import get_auth_service, get_repository
 from app.schemas.user import UserAdd, UserGet
-from app.schemas.dto import RegisterDTO, LoginDTO
+from app.schemas.dto import RegisterDTO, LoginDTO, ItemsDTO
 from app.schemas.token import Token
 from app.services.service_user import AuthService
+from app.repository import Repository
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import Annotated
 
@@ -39,6 +40,10 @@ async def profile(token : Annotated[str,Depends(oauth2_schema)], auth : AuthServ
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
     return result.model_dump()
 
+
+
+@router.post("/items")
+async def items(items : ItemsDTO, db : Repository = Depends(get_repository)):
     
     
     

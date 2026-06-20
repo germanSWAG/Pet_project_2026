@@ -4,7 +4,7 @@ from fake_useragent import FakeUserAgent
 import re
 import json
 
-async def parser(brand : str, region : str| None = None):
+async def parser(brand : str, region : str| None = None) -> list[dict]:
     if not region:  
         url = f'https://auto.drom.ru/{brand}/'
     else:

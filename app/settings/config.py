@@ -1,4 +1,5 @@
 import os 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +23,8 @@ class Settings(BaseSettings):
     def get_db_url(self) -> str:
         return (f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
 
+load_dotenv()
+API_TOKEN = os.getenv("API_KEY")
 
 
 settings = Settings()
