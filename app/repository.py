@@ -39,14 +39,14 @@ class Repository:
             return None
         
         
-    async def add_token(self, token : str, email : str) -> bool:
-        query = update(User).where(User.email == email).values(refresh_token=token)
+    async def add_token(self, token : str, id : int) -> bool:
+        query = update(User).where(User.id == id).values(refresh_token=token)
         try:
             await self.session.execute(query)
             await self.session.commit()
             return True
         except Exception as e:
-            logger.error(f"Ошибка при обновление токена для {email}: {e}")
+            logger.error(f"Ошибка при обновление токена для {id}: {e}")
             return False
 
     async def add_cars(self, data : list) -> bool:

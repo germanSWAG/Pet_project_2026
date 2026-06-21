@@ -4,7 +4,7 @@ from app.schemas.token import TokenData
 from app.services.security import hash_password, verify_password
 from fastapi.concurrency import run_in_threadpool
 from app.repository import Repository
-from app.services.security import create_token, verify_token
+from app.services.security import generate_access_token, verify_token, generate_refresh_token, hash_refresh_token
 
 
 class AuthService:
@@ -23,21 +23,26 @@ class AuthService:
 
 
 
-    async def login(self, user_dto : LoginDTO) -> str | None:
+    async def login(self, user_dto : LoginDTO) -> dict | False:
         result = await self.repository.get_user(user_dto.email)
         if not result:
-            return None
+            return False
         
 
         verify = await run_in_threadpool(verify_password, result.hash_password, user_dto.hash_password)
 
         if not verify:
-            return None 
+            return False
         
-        token = await run_in_threadpool(create_token, data={"sub" : str(result.id), 
-                                          "email" : result.email})
-        return token
+        access_token = await run_in_threadpool(generate_access_token, data={"sub" : str(result.id)})
+        refresh_token = await run_in_threadpool(generate_refresh_token)
+        hash_refresh = await run_in_threadpool(hash_refresh_token, refresh_token)
+        await self.repository.add_token(hash_refresh, result.id)
         
+        return {"access_token" : access_token,
+                "refresh_token": refresh_token}
+        
+
     async def verify_user(self, token : str) -> TokenData | None:
         decode_token = await run_in_threadpool(verify_token, token)
         user_email = decode_token.get("email")

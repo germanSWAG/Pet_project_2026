@@ -3,6 +3,8 @@ from argon2.exceptions import VerifyMismatchError
 from datetime import datetime, timedelta, timezone
 from app.settings.config import settings
 from jose import JWTError, jwt, ExpiredSignatureError
+import hashlib
+import secrets
 
 def hash_password(password):
     user_hash = PasswordHasher().hash(password)
@@ -18,7 +20,7 @@ def verify_password(hash, password):
         return False
 
 
-def create_token(data : dict) -> str:
+def generate_access_token(data : dict) -> dict:
     access_payload = data.copy()
     access_expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_payload.update({"exp": access_expire, "type": "access"})
@@ -26,18 +28,12 @@ def create_token(data : dict) -> str:
         access_payload,
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM)
-
-    refresh_expire = datetime.now(timezone.utc) + timedelta(days=30)
-    refresh_payload = {"sub" : data.get("sub"),"exp" : refresh_expire,"type": "refresh"}
+   
     
-    refresh_token = jwt.encode(
-        refresh_payload, 
-        settings.SECRET_KEY, 
-        algorithm=settings.ALGORITHM)
 
 
-    return {"access_token" : access_token,
-            "refresh_token": refresh_token}
+    return {"access_token" : access_token}
+            
 
 
 
@@ -52,3 +48,12 @@ def verify_token(token : str) -> dict:
     except JWTError as e:
         print(f"Токен подделан или нарушена структура {e}")
         return None
+    
+
+def hash_refresh_token(token : str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def generate_refresh_token() -> str:
+    return secrets.token_urlsafe(64)
+
