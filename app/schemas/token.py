@@ -7,6 +7,5 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    id_user: str | None = None
-    email : str | None = None
+    id_user: str 
     model_config = ConfigDict(from_attributes=True)

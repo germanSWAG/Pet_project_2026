@@ -19,10 +19,14 @@ class Repository:
 
         return existing_data
 
-    async def check_user(self, email : str) -> bool:
-        query = select(exists().where(User.email == email))
-        return await self.session.scalar(query)
+    async def user_exists_email(self, email : str) -> bool:
+            query = select(exists().where(User.email == email))
+            return await self.session.scalar(query)
     
+    async def user_exists_id(self, id : int) -> bool:
+            query = select(exists().where(User.id == id))
+            return await self.session.scalar(query)
+        
 
     async def add_user(self, user_data : dict) -> UserOut | None:
         new_user = User(**user_data)

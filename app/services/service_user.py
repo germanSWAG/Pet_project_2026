@@ -1,5 +1,4 @@
-from app.schemas.dto import RegisterDTO, LoginDTO
-from app.schemas.user import UserOut
+from app.schemas.dto import RegisterDTO, LoginDTO, TokenPair
 from app.schemas.token import TokenData
 from app.services.security import hash_password, verify_password
 from fastapi.concurrency import run_in_threadpool
@@ -13,23 +12,28 @@ class AuthService:
 
 
     async def registration(self, user_dto : RegisterDTO):
-        hashed_password = await run_in_threadpool(hash_password, user_dto.hash_password)
-        result = await self.repository.check_user(user_dto.email)
+        result = await self.repository.user_exists_email(user_dto.email)
+        
         if result:
             return None
-        user_dict = user_dto.model_dump()
-        user_dict["hash_password"] = hashed_password
-        return await self.repository.add_user(user_dict)
+        
+        password_hash = await run_in_threadpool(hash_password, user_dto.password)
+        # user_dict = user_dto.model_dump()
+        # user_dict["hash_password"] = user_dict.pop("password")
+        # user_dict["hash_password"] = hashed_password
+        return await self.repository.add_user({"username" : user_dto.username,
+                                               "email" : user_dto.email,
+                                               "hash_password" : password_hash})
 
 
 
-    async def login(self, user_dto : LoginDTO) -> dict | False:
+    async def login(self, user_dto : LoginDTO) -> TokenPair | False:
         result = await self.repository.get_user(user_dto.email)
         if not result:
             return False
         
 
-        verify = await run_in_threadpool(verify_password, result.hash_password, user_dto.hash_password)
+        verify = await run_in_threadpool(verify_password, result.hash_password, user_dto.password)
 
         if not verify:
             return False
@@ -39,22 +43,24 @@ class AuthService:
         hash_refresh = await run_in_threadpool(hash_refresh_token, refresh_token)
         await self.repository.add_token(hash_refresh, result.id)
         
-        return {"access_token" : access_token,
-                "refresh_token": refresh_token}
-        
+        return TokenPair(
+            access_token=access_token,
+            refresh_token=refresh_token
+                )
 
     async def verify_user(self, token : str) -> TokenData | None:
         decode_token = await run_in_threadpool(verify_token, token)
-        user_email = decode_token.get("email")
-        if not user_email:
+        id = decode_token.get("sub")
+        if not id:
             return None
         
-        is_active = await self.repository.check_user(user_email)
+        is_active = await self.repository.user_exists_id(id=id)
         if is_active:
-            user = TokenData(id_user=decode_token.get("sub"), 
-                            email=decode_token.get("email"))
+            user = TokenData(id_user=decode_token.get("sub")
+                    )
+            
             return user
-        print("ошибка")
+        
         return None
        
         
