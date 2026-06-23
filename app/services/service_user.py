@@ -18,9 +18,6 @@ class AuthService:
             return None
         
         password_hash = await run_in_threadpool(hash_password, user_dto.password)
-        # user_dict = user_dto.model_dump()
-        # user_dict["hash_password"] = user_dict.pop("password")
-        # user_dict["hash_password"] = hashed_password
         return await self.repository.add_user({"username" : user_dto.username,
                                                "email" : user_dto.email,
                                                "hash_password" : password_hash})
