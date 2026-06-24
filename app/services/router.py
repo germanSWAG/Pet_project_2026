@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from app.services.dependencies import get_auth_service, get_repository
 from app.schemas.user import UserAdd
 from app.schemas.dto import RegisterDTO, LoginDTO, ItemsDTO, TokenPair
@@ -58,3 +58,10 @@ async def items(items : ItemsDTO, db : Repository = Depends(get_repository)):
     pass
     
     
+@router.get("/refresh")
+async def get_token_refresh(request : Request, auth : AuthService = Depends(get_auth_service)):
+    refresh_token = await request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="У пользователя нет токена")
+    
+    pass

@@ -60,8 +60,18 @@ class AuthService:
         
         return None
        
-        
+    async def refresh(self, token : str) -> str:
+        refresh_hash = await run_in_threadpool(hash_refresh_token, token)
+        id_user = await self.refresh(refresh_hash)
+        if refresh_hash == id_user:
+            access_token = await run_in_threadpool(generate_access_token, data={"sub" : id_user})
+            refresh_token = await run_in_threadpool(generate_refresh_token)
+            
+            return TokenPair(access_token=access_token,
+                             refresh_token=refresh_token)
 
+
+      
 
     
 
