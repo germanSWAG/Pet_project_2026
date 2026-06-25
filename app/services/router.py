@@ -59,9 +59,27 @@ async def items(items : ItemsDTO, db : Repository = Depends(get_repository)):
     
     
 @router.get("/refresh")
-async def get_token_refresh(request : Request, auth : AuthService = Depends(get_auth_service)):
-    refresh_token = await request.cookies.get("refresh_token")
-    if not refresh_token:
-        raise HTTPException(status_code=401, detail="У пользователя нет токена")
+async def update_tokens(response : Response,request : Request, auth : AuthService = Depends(get_auth_service)):
+    refresh_token = request.cookies.get("refresh_token")
+    if refresh_token is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Недействительный или истекший refresh токен"
+        )
+    tokens = await auth.refresh(refresh_token)
+    if not tokens:
+        raise HTTPException(status_code=401, detail="Не найден refresh токен")
     
-    pass
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age= 60 * 60 * 24 * 30
+    )
+    return {"access_token" : tokens.access_token,
+            "token_type" : "bearer"}
+    
+
+

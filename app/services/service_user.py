@@ -51,7 +51,7 @@ class AuthService:
         if not id:
             return None
         
-        is_active = await self.repository.user_exists_id(id=id)
+        is_active = await self.repository.user_exists_id(id=int(id))
         if is_active:
             user = TokenData(id_user=decode_token.get("sub")
                     )
@@ -60,15 +60,17 @@ class AuthService:
         
         return None
        
-    async def refresh(self, token : str) -> str:
+    async def refresh(self, token : str) -> TokenPair | None:
         refresh_hash = await run_in_threadpool(hash_refresh_token, token)
-        id_user = await self.refresh(refresh_hash)
-        if refresh_hash == id_user:
-            access_token = await run_in_threadpool(generate_access_token, data={"sub" : id_user})
+        user_id = await self.repository.user_refresh(refresh_hash)
+        if user_id:
+            access_token = await run_in_threadpool(generate_access_token, data={"sub" : user_id})
             refresh_token = await run_in_threadpool(generate_refresh_token)
-            
+            new_refresh_hash = await run_in_threadpool(hash_refresh_token, refresh_token)
+            await self.repository.add_token(new_refresh_hash, user_id)
             return TokenPair(access_token=access_token,
                              refresh_token=refresh_token)
+        return None
 
 
       

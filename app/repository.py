@@ -88,7 +88,12 @@ class Repository:
     async def user_refresh(self, refresh_token : str) -> int | None:
         query = select(User.id).where(User.refresh_token == refresh_token)
         result = await self.session.scalar(query)
-        return result
+        if result:
+            return result
+        
+        return None
+
+       
        
 
             
