@@ -46,14 +46,14 @@ class AuthService:
                 )
 
     async def verify_user(self, token : str) -> TokenData | None:
-        decode_token = await run_in_threadpool(verify_token, token)
-        id = decode_token.get("sub")
-        if not id:
+        user_id = await run_in_threadpool(verify_token, token)
+        
+        if not user_id:
             return None
         
-        is_active = await self.repository.user_exists_id(id=int(id))
+        is_active = await self.repository.user_exists_id(id=int(user_id))
         if is_active:
-            user = TokenData(id_user=decode_token.get("sub")
+            user = TokenData(id_user=user_id
                     )
             
             return user
@@ -71,11 +71,8 @@ class AuthService:
             return TokenPair(access_token=access_token,
                              refresh_token=refresh_token)
         return None
-
-
-      
-
     
-
-        
-
+    async def delete_refresh(self, token : str) -> bool:
+        id_user = await run_in_threadpool(verify_token, token)
+        status = await self.repository.delete_refresh_db(id_user)
+        return status

@@ -82,4 +82,13 @@ async def update_tokens(response : Response,request : Request, auth : AuthServic
             "token_type" : "bearer"}
     
 
+@router.post("/logout")
+async def logout(response : Response, token : Annotated[str, Depends(oauth2_schema)], auth : AuthService = Depends(get_auth_service)):
+    response.delete_cookie("refresh_token")
+    status = await auth.delete_refresh(token)
+    if not status:
+        raise HTTPException(status_code=400, detail="Ошибка при выполнение выхода")
+    
+    return {"Status" : "Пользователь вышел из записи"}
+
 

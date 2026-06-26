@@ -1,5 +1,4 @@
 import os 
-from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 current_dir = os.path.dirname(os.path.abspath(__file__))

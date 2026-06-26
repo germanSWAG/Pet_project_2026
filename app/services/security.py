@@ -29,19 +29,13 @@ def generate_access_token(data : dict) -> dict:
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM)
    
-    
-
-
     return access_token
             
 
-
-
-
-def verify_token(token : str) -> dict:
+def verify_token(token : str) -> str:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=settings.ALGORITHM)
-        return payload
+        return payload["sub"]
     except ExpiredSignatureError as e:
         print(f"Время токена истекло! {e}")
         return None
@@ -56,4 +50,5 @@ def hash_refresh_token(token : str) -> str:
 
 def generate_refresh_token() -> str:
     return secrets.token_urlsafe(64)
+
 

@@ -93,6 +93,16 @@ class Repository:
         
         return None
 
+    async def delete_refresh_db(self, id : int) -> bool:
+        query = update(User).where(User.id == id).values(refresh_token=None)
+        try:
+            await self.session.execute(query)
+            await self.session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Ошибка при удаление токена из записи БД: {e}")
+            return False
+    
        
        
 
