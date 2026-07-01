@@ -1,6 +1,6 @@
 import asyncio 
 from playwright.async_api import async_playwright, Page
-
+import re
 
 
 
@@ -35,46 +35,69 @@ class DromSource:
         return brands
     
     async def get_cars(self, links : list[dict]):
+        
+        url = links
 
-        data = []
+        # for link in links[:1]:
+            # url = link["url"]
+            # model = link["name"]
 
-        for link in links[2:]:
-            url = link["url"]
-            model = link["name"]
+        while True:
+            for num_page in range(1,1000):
+                url_page = f'{url + 'page' + str(num_page)}'
+                print(url_page)
 
-            await self.page.goto(url)
+                try:
 
-            await self.page.wait_for_selector('[data-ftid="bulls-list_bull"]')
+                    await self.page.goto(url_page)
 
-            cards = self.page.locator('[data-ftid="bulls-list_bull"]')
+                    await self.page.wait_for_selector('[data-ftid="bulls-list_bull"]')
+                    await asyncio.sleep(3)
 
-            count = await cards.count()
+                    cards = self.page.locator('[data-ftid="bulls-list_bull"]')
+                except Exception as e:
+                    print(f"Страницы закончились {e} или ошибка ошибка на {num_page}")
+                    break
 
-            for i in range(count):
-                card = cards.nth(i)
+
+                count = await cards.count()
+                print(count)
+                page_data = []
 
 
-                title_el = card.locator('[data-ftid="bull_title"]')
-                sub_el = card.locator('[data-ftid="bull_subtitle"]')
-                price_el = card.locator('[data-ftid="bull_price"]')
+                for i in range(count):
+                    card = cards.nth(i)
+                   
 
-                title = await title_el.inner_text()
-                price = await price_el.inner_text()
-                equipment = await sub_el.inner_text()
 
-                href = await title_el.get_attribute("href")
-                
+                    title_el = card.locator('[data-ftid="bull_title"]')
+                    # sub_el = card.locator('[data-ftid="bull_subtitle"]')
+                    price_el = card.locator('[data-ftid="bull_price"]')
 
-                
-                data.append({
-                        "brand" : model,
-                        "title" : title,
-                        "equipment" : equipment,
-                        "price" : price,
-                        "href" : href
-                    })
 
-        return data
+                    if await title_el.count() > 0 and await price_el.count() > 0:
+                        title = await title_el.inner_text()
+                        price = await price_el.inner_text()
+                        # equipment = await sub_el.inner_text()
+
+                        clean_price = ''.join(re.findall(r'\d+', price))
+
+                        href = await title_el.get_attribute("href")
+                        
+
+                        
+                        page_data.append({
+                                # "brand" : model,
+                                "title" : title,
+                                "price" : clean_price,
+                                "href" : href
+                            })
+                if page_data:
+                    yield page_data
+
+                await asyncio.sleep(5)
+            break
+
 
 
             
@@ -87,9 +110,16 @@ async def main():
         drom = DromSource(page)
         brands = await drom.get_brands()
 
-        cars = await drom.get_cars(brands)
+        brand = 'https://auto.drom.ru/krasnodar/audi/'
 
-        print(brands)
+        async for cars_batch in drom.get_cars(brand):
+            print(f'Получены новые данные машин из {len(cars_batch)}')
+
+            for car in cars_batch:
+                print(f'Обработка: {car['title']} за {car['price']} руб.  Ссылка - {car['href']}')
+
+
+
 
         await browser.close()
 
