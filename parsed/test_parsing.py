@@ -1,6 +1,8 @@
 import asyncio 
 from playwright.async_api import async_playwright, Page
+from urllib.parse import urlparse
 import re
+import httpx 
 
 
 
@@ -10,8 +12,18 @@ class DromSource:
     def __init__(self, page : Page):
         self.page = page
 
-    async def get_brands(self,):
-        await self.page.goto("https://auto.drom.ru/")
+
+    async def get_count_car(self, url : str):
+        await self.page.goto(url)
+        await self.page.wait_for_selector('[data-ftid="bulls-list_bulls-tab"]')
+        count = self.page.locator('[data-ftid="bulls-list_bulls-tab"]')
+
+        count_el = await count.inner_text()
+        return count_el
+
+
+    async def get_links_brands(self, city : str):
+        await self.page.goto(f"https://auto.drom.ru/{city}/")
 
         links = self.page.locator(
             '[data-ftid="component_cars-list-item_hidden-link"]'
@@ -34,69 +46,79 @@ class DromSource:
         
         return brands
     
-    async def get_cars(self, links : list[dict]):
+    async def get_cars(self, url : str):
         
-        url = links
+        city, brand = urlparse(url).path.strip('/').split('/')
+        
+        
+        print(url)
 
-        # for link in links[:1]:
-            # url = link["url"]
-            # model = link["name"]
+        page = 99
 
-        while True:
-            for num_page in range(1,1000):
-                url_page = f'{url + 'page' + str(num_page)}'
-                print(url_page)
+        seen = set()
 
-                try:
+        while page <= 100:
+            url_page = f"{url.rstrip('/')}/page{page}"
+            print(url_page)
 
-                    await self.page.goto(url_page)
+               
 
-                    await self.page.wait_for_selector('[data-ftid="bulls-list_bull"]')
-                    await asyncio.sleep(3)
+            await self.page.goto(url_page)
 
-                    cards = self.page.locator('[data-ftid="bulls-list_bull"]')
-                except Exception as e:
-                    print(f"Страницы закончились {e} или ошибка ошибка на {num_page}")
-                    break
+            await self.page.wait_for_selector('[data-ftid="bulls-list_bull"]')
+
+            cards = self.page.locator('[data-ftid="bulls-list_bull"]')
 
 
-                count = await cards.count()
-                print(count)
-                page_data = []
+            count = await cards.count()
+            if count == 0:
+                print("Ограничение глубины пагинации")
+                break
+            page_data = []
 
 
-                for i in range(count):
-                    card = cards.nth(i)
+            for i in range(count):
+                card = cards.nth(i)
                    
 
+                sold_badge = card.locator('[data-ftid="bull_sold"]')
+                title_el = card.locator('[data-ftid="bull_title"]')
+                # sub_el = card.locator('[data-ftid="bull_subtitle"]')
+                price_el = card.locator('[data-ftid="bull_price"]')
 
-                    title_el = card.locator('[data-ftid="bull_title"]')
-                    # sub_el = card.locator('[data-ftid="bull_subtitle"]')
-                    price_el = card.locator('[data-ftid="bull_price"]')
+                if await sold_badge.count() > 0:
+                    print("Автомобиль был продан. Объявление проигнорированно")
+                    continue
 
 
-                    if await title_el.count() > 0 and await price_el.count() > 0:
-                        title = await title_el.inner_text()
-                        price = await price_el.inner_text()
-                        # equipment = await sub_el.inner_text()
+                if await title_el.count() > 0:
+                    title = await title_el.inner_text()
+                    price = await price_el.inner_text()
+                    # equipment = await sub_el.inner_text()
 
-                        clean_price = ''.join(re.findall(r'\d+', price))
+                    clean_price = ''.join(re.findall(r'\d+', price))
 
-                        href = await title_el.get_attribute("href")
+                    href = await title_el.get_attribute("href")
+
+                    if href in seen:
+                        continue
+                    seen.add(href)
                         
 
                         
-                        page_data.append({
-                                # "brand" : model,
-                                "title" : title,
-                                "price" : clean_price,
-                                "href" : href
+                    page_data.append({
+                            "brand" : brand,
+                            "title" : title,
+                            "price" : clean_price,
+                            "city" : city,
+                            "href" : href
                             })
-                if page_data:
-                    yield page_data
+            if page_data:
+                yield page_data
 
-                await asyncio.sleep(5)
-            break
+                page += 1
+                
+            
 
 
 
@@ -107,16 +129,33 @@ async def main():
         context = await browser.new_context()
         page = await context.new_page()
         
+
         drom = DromSource(page)
-        brands = await drom.get_brands()
+        brands = await drom.get_links_brands('moscow')
 
-        brand = 'https://auto.drom.ru/krasnodar/audi/'
+        async with httpx.AsyncClient() as client:
+            for brand in brands:
+                url = brand['url']
+                async for cars_batch in drom.get_cars(url):
+                    response = await client.post(
+                    "http://localhost:8000/items",
+                    json=cars_batch)
+                    print(response.status_code)
+                    print(f"Отправлено {len(cars_batch)} Объявлений")
 
-        async for cars_batch in drom.get_cars(brand):
-            print(f'Получены новые данные машин из {len(cars_batch)}')
+                
 
-            for car in cars_batch:
-                print(f'Обработка: {car['title']} за {car['price']} руб.  Ссылка - {car['href']}')
+        count = await drom.get_count_car(url)
+
+        
+        print(brands)
+        city = {'region23' : 'krasnodar'}
+
+        # async for cars_batch in drom.get_cars():
+        #     print(f'Получены новые данные машин из {len(cars_batch)}')
+
+        #     for car in cars_batch:
+        #         print(f'Обработка: {car['title']} за {car['price']} руб.  Ссылка - {car['href']}')
 
 
 
