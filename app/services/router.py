@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from app.services.dependencies import get_auth_service, get_repository
 from app.schemas.user import UserAdd
 from app.schemas.dto import RegisterDTO, LoginDTO, ItemsDTO, TokenPair
+from app.schemas.cars import CarsListData
 from app.services.service_user import AuthService
 from app.repository import Repository
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -54,8 +55,9 @@ async def profile(token : Annotated[str, Depends(oauth2_schema)], auth : AuthSer
 
 
 @router.post("/items")
-async def items(items : ItemsDTO, db : Repository = Depends(get_repository)):
-    pass
+async def items(items : CarsListData):
+    return {"status" : 200}
+    
     
     
 @router.get("/refresh")

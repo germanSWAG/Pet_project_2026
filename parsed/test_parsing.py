@@ -98,6 +98,13 @@ class DromSource:
 
                     clean_price = ''.join(re.findall(r'\d+', price))
 
+                    parts = title.rsplit(',', 1)
+
+                    if len(parts) == 2:
+                        model_part, year_part = parts
+                        model = model_part.strip()
+                        year = year_part.strip()
+
                     href = await title_el.get_attribute("href")
 
                     if href in seen:
@@ -106,15 +113,22 @@ class DromSource:
                         
 
                         
-                    page_data.append({
-                            "brand" : brand,
-                            "title" : title,
-                            "price" : clean_price,
-                            "city" : city,
-                            "href" : href
+                page_data.append({
+                        "brand" : brand,
+                        "model" : model,
+                        "year"  : int(year),
+                        "price" : int(clean_price),
+                        "city"  : city,
+                        "href"  : href
                             })
+                    
+                    
             if page_data:
-                yield page_data
+                payload = {
+                "data" : page_data
+                }
+
+                yield payload
 
                 page += 1
                 
@@ -133,12 +147,12 @@ async def main():
         drom = DromSource(page)
         brands = await drom.get_links_brands('moscow')
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             for brand in brands:
                 url = brand['url']
                 async for cars_batch in drom.get_cars(url):
                     response = await client.post(
-                    "http://localhost:8000/items",
+                    "http://localhost:8000/services/items",
                     json=cars_batch)
                     print(response.status_code)
                     print(f"Отправлено {len(cars_batch)} Объявлений")
