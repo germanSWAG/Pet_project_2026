@@ -12,9 +12,8 @@ from alembic import context
 
 from app.settings.config import settings
 from app.database import Base
-from app.models.user import User
-from app.models.add_cars import AdsCar
-from app.models.search_cars import SearchFilter
+import app.models.user
+import app.models.products
 
 
 config = context.config

@@ -10,7 +10,3 @@ class User(Base):
     is_active : Mapped[bool] = mapped_column(default=True, server_default="true")
     refresh_token : Mapped[str] = mapped_column(String, nullable=True)
     username_telegram : Mapped[str | None] = mapped_column(String(150), nullable=True)
-
-
-
-

@@ -1,7 +1,7 @@
-from sqlalchemy import select, exists, update, insert
+from sqlalchemy import select, exists, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User 
-from app.models.add_cars import AdsCar
+from app.models.products import Product
 from app.schemas.user import UserOut
 import logging
 
@@ -53,37 +53,6 @@ class Repository:
             logger.error(f"Ошибка при обновление токена для {id}: {e}")
             return False
 
-    async def add_cars(self, data : list) -> bool:
-        if not data:
-            return False
-        
-        add_car = [
-            AdsCar(
-            platform='drom',
-            brand=car['brand'],
-            model=car['model'],
-            price=car['price'],
-            url=car['link']
-            )
-            for car in data
-        ]
-        
-
-        if not add_car:
-            return False
-        
-        
-        try:
-            async with self.session.begin():
-                self.session.add_all(add_car)
-            return True
-    
-
-        except Exception as e:
-
-            logger.error(f"Ошибка при пакетном добавлении авто в БД: {e}")
-
-            return False
     
     async def user_refresh(self, refresh_token : str) -> int | None:
         query = select(User.id).where(User.refresh_token == refresh_token)
@@ -103,10 +72,41 @@ class Repository:
             logger.error(f"Ошибка при удаление токена из записи БД: {e}")
             return False
     
-       
-       
+    
+    async def add_product_db(self, data : dict) -> dict | None:
+        new_product = Product(**data)
+        
+        try:
+            self.session.add(new_product)
+            await self.session.commit()
+            await self.session.refresh(new_product)
+            return data
+        
 
-            
+        except Exception as e:
+            logger.error(f"Ошибка при добавление нового товара в БД: {e}")
+            return None
+
+    
+    async def get_product_db(self, id : int):
+        query = select(Product).where(Product.id == id)
+        result = await self.session.execute(query)
+        return result.scalar()
+
+
+
+    async def get_all_products_db(self, offset : int, page_size : int) -> dict:
+        stmt = select(Product).order_by(Product.id).offset(
+            offset).limit(page_size)
+        
+        try:
+            result = await self.session.scalars(stmt)
+            total = await self.session.scalar(select(func.count()).select_from(Product))
+
+        except Exception as e:
+            logger.error(f"Ошибка при получение всех данных о товаре. Traceback - {e}")
+            return None
+        return {"total" : total, "items" : result.all()}
         
 
         

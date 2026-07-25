@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, HttpUrl
+from pydantic import BaseModel, EmailStr, HttpUrl, ConfigDict
 
 class RegisterDTO(BaseModel):
     username : str
@@ -11,15 +11,14 @@ class LoginDTO(BaseModel):
     password : str
 
 
-
-class ItemsDTO(BaseModel):
-    brand : str
-    model : str
-    year : int 
-    price : float
-    link : HttpUrl
-
-
 class TokenPair(BaseModel):
     access_token : str
     refresh_token : str
+
+class ProductDTO(BaseModel):
+    name : str 
+    description : str 
+    price : float
+    img_url : str 
+
+    model_config = ConfigDict(from_attributes=True)

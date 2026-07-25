@@ -2,6 +2,7 @@ from app.database import get_db
 from app.repository import Repository
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.service_user import AuthService
+from app.services.service_products import Products
 from fastapi import Depends
 
 
@@ -13,7 +14,8 @@ async def get_repository(session : AsyncSession = Depends(get_db)):
 async def get_auth_service(repository : Repository = Depends(get_repository)):
     return AuthService(repository=repository)
 
-
+async def get_products_service(repository : Repository = Depends(get_repository)):
+    return Products(repository=repository)
 
 
 
