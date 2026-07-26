@@ -20,7 +20,8 @@ class Products():
         return ProductDTO.model_validate(product)
     
     async def get_all_products(self, page : int, page_size: int):
-        products = await self.repository.get_all_products_db()
+        offset = (page - 1) * page_size
+        products = await self.repository.get_all_products_db(offset, page_size)
         if not products:
             return None
         return products
