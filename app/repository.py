@@ -1,7 +1,10 @@
-from sqlalchemy import select, exists, update, func
+from sqlalchemy import select, exists, update, func, insert
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import insert
 from app.models.user import User 
 from app.models.products import Product
+from app.models.basket import Basket
 from app.schemas.user import UserOut
 import logging
 
@@ -107,7 +110,59 @@ class Repository:
             logger.error(f"Ошибка при получение всех данных о товаре. Traceback - {e}")
             return None
         return {"total" : total, "items" : result.all()}
+
+
+
+    async def add_basket(self, user_id: int,
+                        product_id: int,
+                        count : int) -> Basket | None:
+        if count <=0:
+            raise ValueError("count должен быть положительным")
         
+        stmt = insert(Basket).values(user_id=user_id,
+                                    product_id=product_id, 
+                                    quantity=count
+                                    )
+        stmt = stmt.on_conflict_do_update(
+                                    constraint="idx_user_id_product_id",
+                                    set_= {"quantity": Basket.quantity + stmt.excluded.quantity},
+                                    ).returning(Basket)
+        
+
+        try:
+
+            result = await self.session.execute(stmt)
+            await self.session.commit()
+            return result.scalar_one()
+        except Exception:
+            await self.session.rollback()
+            logger.exception(f'Ошибка при работе с базой. \n'
+                             f'Функция - {self.add_basket.__name__} \n'
+                            )
+            return None
+        
+            
+            
+
+    async def get_basket_db(self, user_id : int) -> list[Basket] | None:
+        stmt = select(Basket).where(
+            Basket.user_id == user_id
+            ).options(
+            joinedload(
+            Basket.product
+        ))
+
+        try:
+            result = await self.session.execute(stmt)
+            items = result.scalars().all()
+            return items
+
+        except Exception:
+            logger.exception(f'Ошибка при работе с базой. \n'
+                         f'Функция - {self.get_basket_db.__name__}')
+            return None
+
+
 
         
 

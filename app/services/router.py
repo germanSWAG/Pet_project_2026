@@ -110,9 +110,12 @@ async def get_product(id_product : int, service_products : Products = Depends(ge
     return result
 
 
-@router.get("get_products")
+@router.get("/get_products")
 async def get_all_product(page : int = 1, page_size : int = 20, service_products : Products = Depends(get_products_service)):
     result = await service_products.get_all_products(page, page_size)
     return {"data" : 
             result}
 
+@router.post("/cart")
+async def cart_user(id_product : int, service_products :Products = Depends(get_products_service)):
+    pass

@@ -1,5 +1,5 @@
 from app.repository import Repository
-from app.schemas.dto import ProductDTO
+from app.schemas.dto import ProductDTO, ProductBasketDTO
 
 
 class Products():
@@ -25,6 +25,15 @@ class Products():
         if not products:
             return None
         return products
+
+    async def add_product_for_cart(self, product : ProductBasketDTO):
+        result = await self.repository.add_basket(
+                user_id= product.user_id,
+                product_id= product.product_id,
+                count= product.quantity)
         
+        if result is None:
+            return None
+        return ProductBasketDTO.model_validate(result)
 
     

@@ -2,14 +2,15 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 import pytest 
 import pytest_asyncio
 from app.database import Base
-import models
 from app.services.service_user import AuthService
+from app.schemas.dto import RegisterDTO
+from app.schemas.user import UserOut
 
 
 @pytest_asyncio.fixture(scope="session")
 async def db_engine():
 
-    test_engine = create_async_engine("sqlite+aiosqlite:///:memory")
+    test_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
     async with test_engine.begin() as conn:
 
@@ -27,6 +28,6 @@ async def db_session(db_engine):
     async with async_session() as session:
         yield session
 
-@pytest_asyncio.fixture(scope="function")
-async def add_user(db_session, auth : AuthService):
-    pass
+
+
+
