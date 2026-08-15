@@ -26,7 +26,7 @@ class Products():
             return None
         return products
 
-    async def add_product_for_cart(self, product : ProductBasketDTO):
+    async def add_product_for_basket(self, product : ProductBasketDTO):
         result = await self.repository.add_basket(
                 user_id= product.user_id,
                 product_id= product.product_id,

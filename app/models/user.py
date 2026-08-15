@@ -8,5 +8,5 @@ class User(Base):
     email : Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
     hash_password : Mapped[str] = mapped_column(String(250), nullable=False)
     is_active : Mapped[bool] = mapped_column(default=True, server_default="true")
-    refresh_token : Mapped[str] = mapped_column(String, nullable=True)
+    refresh_token : Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
     username_telegram : Mapped[str | None] = mapped_column(String(150), nullable=True)

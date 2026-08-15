@@ -2,6 +2,7 @@ from sqlalchemy import select, exists, update, func, insert
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from app.models.user import User 
 from app.models.products import Product
 from app.models.basket import Basket
@@ -18,10 +19,23 @@ class Repository:
     async def get_user(self, email : str) -> User | None:
         query = select(User).where(email == User.email)
         result = await self.session.execute(query)
-        existing_data = result.scalar_one_or_none()
+        return result.scalar_one_or_none()
 
-        return existing_data
 
+    async def commit(self,) -> None:
+        try:
+            await self.session.commit()
+        except Exception as e:
+            await self.session.rollback()
+            logger.exception("Проблема при фиксирование изменений")
+            raise
+
+
+    async def rollback(self,) -> None:
+        await self.session.rollback()
+        return None
+
+    
     async def user_exists_email(self, email : str) -> bool:
             query = select(exists().where(User.email == email))
             return await self.session.scalar(query)
@@ -31,49 +45,30 @@ class Repository:
             return await self.session.scalar(query)
         
 
-    async def add_user(self, user_data : dict) -> UserOut | None:
+    async def add_user_for_db(self, user_data : dict) -> User:
         new_user = User(**user_data)
             
-        try:
-            self.session.add(new_user)
-            await self.session.commit()
-            await self.session.refresh(new_user)
-            return UserOut.model_validate(new_user)
-        except Exception as e:
-        
-            await self.session.rollback()
-            logger.exception("Ошибка при добавление в базу")
-            return None
+        self.session.add(new_user)
+        await self.session.flush()
+        return new_user
+       
         
         
-    async def add_token(self, token : str, id : int) -> bool:
+    async def update_token(self, token : str, id : int) -> None:
         query = update(User).where(User.id == id).values(refresh_token=token)
-        try:
-            await self.session.execute(query)
-            await self.session.commit()
-            return True
-        except Exception as e:
-            logger.error(f"Ошибка при обновление токена для {id}: {e}")
-            return False
+        await self.session.execute(query)
 
     
     async def user_refresh(self, refresh_token : str) -> int | None:
-        query = select(User.id).where(User.refresh_token == refresh_token)
-        result = await self.session.scalar(query)
-        if result:
-            return result
-        
-        return None
+        query = select(User.id).where(User.refresh_token == refresh_token).with_for_update()
+        return await self.session.scalar(query)
 
-    async def delete_refresh_db(self, id : int) -> bool:
+
+    async def delete_refresh_db(self, id : int) -> None:
         query = update(User).where(User.id == id).values(refresh_token=None)
-        try:
-            await self.session.execute(query)
-            await self.session.commit()
-            return True
-        except Exception as e:
-            logger.error(f"Ошибка при удаление токена из записи БД: {e}")
-            return False
+        
+        await self.session.execute(query)
+        await self.session.commit()
     
     
     async def add_product_db(self, data : dict) -> dict | None:

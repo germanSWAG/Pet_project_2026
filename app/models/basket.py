@@ -14,5 +14,5 @@ class Basket(Base):
     product : Mapped['Product'] = relationship()
 
     __table_args__ = (
-        UniqueConstraint('user_id', 'product_id', name='idx_user_id_product_id')
+        UniqueConstraint('user_id', 'product_id', name='idx_user_id_product_id'),
     )

@@ -14,6 +14,7 @@ from app.settings.config import settings
 from app.database import Base
 import app.models.user
 import app.models.products
+import app.models.basket
 
 
 config = context.config

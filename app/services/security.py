@@ -6,7 +6,7 @@ from jose import JWTError, jwt, ExpiredSignatureError
 import hashlib
 import secrets
 
-def hash_password(password):
+def password_hashing(password):
     user_hash = PasswordHasher().hash(password)
     return user_hash
 

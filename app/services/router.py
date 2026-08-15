@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Request, Query
 from app.services.dependencies import get_auth_service, get_repository, get_products_service
 from app.schemas.user import UserAdd
 from app.schemas.product import Product
-from app.schemas.dto import RegisterDTO, LoginDTO, TokenPair
+from app.schemas.dto import RegisterDTO, LoginDTO, TokenPair, ProductBasketDTO
 from app.services.service_user import AuthService
 from app.services.service_products import Products
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -116,6 +116,8 @@ async def get_all_product(page : int = 1, page_size : int = 20, service_products
     return {"data" : 
             result}
 
-@router.post("/cart")
-async def cart_user(id_product : int, service_products :Products = Depends(get_products_service)):
-    pass
+@router.post("/basket")
+async def cart_user(product: ProductBasketDTO, service_products: Products = Depends(get_products_service)):
+    result = await service_products.add_product_for_basket(product)
+    # data = result.model_dump()
+    return {'data' : [result]}
