@@ -43,7 +43,6 @@ class Repository:
     async def user_exists_id(self, id : int) -> bool:
             query = select(exists().where(User.id == id))
             return await self.session.scalar(query)
-        
 
     async def add_user_for_db(self, user_data : dict) -> User:
         new_user = User(**user_data)

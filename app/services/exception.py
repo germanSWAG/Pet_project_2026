@@ -16,3 +16,23 @@ class UserAlreadyExistsEmailError(AppError):
         super().__init__(self.msg)
         self.problem_email = email
 
+
+class TokenError(AppError):
+    """Базовое исключение для токенов"""
+    pass
+
+class TokenExpiredError(TokenError):
+    """Срок действия токена истек"""
+    pass
+
+class TokenInvalidError(TokenError):
+    """Токен подделан или некорректен"""
+    pass
+
+
+class ServiceAuthError(AppError):
+    """Ошибка сервиса по работе с пользователем"""
+
+class JWTGenerationError(AppError):
+    """Ошибка при генерации jwt токена"""
+    pass

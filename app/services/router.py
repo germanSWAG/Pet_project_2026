@@ -51,7 +51,7 @@ async def profile(token : Annotated[str, Depends(oauth2_schema)], auth : AuthSer
     result = await auth.verify_user(token)
     if not result:
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
-    return result.model_dump()
+    return {"user_id" : result}
 
 
 
@@ -92,8 +92,9 @@ async def logout(response : Response, token : Annotated[str, Depends(oauth2_sche
 
 
 @router.post("/add_product")
-async def add_product(product : Product, service_products : Products = Depends(get_products_service)):
-    result = await service_products.add_product(product)
+async def add_product(token : Annotated[str, Depends(oauth2_schema)], product : Product, auth_service : AuthService = Depends(get_auth_service), product_service : Products = Depends(get_products_service)):
+
+    result = await product_service.add_product(product)
     if not result:
         raise HTTPException(status_code=400, detail='Ошибка при добавление')
     return {
@@ -117,7 +118,8 @@ async def get_all_product(page : int = 1, page_size : int = 20, service_products
             result}
 
 @router.post("/basket")
-async def cart_user(product: ProductBasketDTO, service_products: Products = Depends(get_products_service)):
+async def cart_user(token : Annotated[str, Depends(oauth2_schema)], product: ProductBasketDTO, auth_service : AuthService = Depends(get_auth_service), service_products: Products = Depends(get_products_service)):
+    user_is_verify = auth_service.verify_user(auth_service)
     result = await service_products.add_product_for_basket(product)
     # data = result.model_dump()
     return {'data' : [result]}

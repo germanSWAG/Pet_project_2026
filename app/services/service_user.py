@@ -5,7 +5,7 @@ from fastapi.concurrency import run_in_threadpool
 from app.repository import Repository
 from app.services.security import generate_access_token, verify_token, generate_refresh_token, hash_refresh_token
 from sqlalchemy.exc import IntegrityError
-from app.services.exception import UserAlreadyExistsEmailError
+from app.services.exception import UserAlreadyExistsEmailError, TokenError, ServiceAuthError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -67,20 +67,15 @@ class AuthService:
             refresh_token=refresh_token
                 )
 
-    async def verify_user(self, token : str) -> TokenData | None:
-        user_id = await run_in_threadpool(verify_token, token)
-        
-        if not user_id:
-            return None
-        
-        is_active = await self.repository.user_exists_id(id=int(user_id))
-        if is_active:
-            user = TokenData(id_user=user_id
-                    )
-            
-            return user
-        
-        return None
+    async def verify_user(self, token : str) -> int:
+        try:
+            user_id = verify_token(token)
+        except TokenError as e:
+                raise ServiceAuthError("Ошибка при обработке jwt токена") from e
+        user_exists = await self.repository.user_exists_id(id=int(user_id))
+        if not user_exists:
+            raise ServiceAuthError("Пользователь не найден в системе")
+        return user_id
        
     async def refresh(self, token : str) -> TokenPair | None:
         refresh_hash = await run_in_threadpool(hash_refresh_token, token)
@@ -95,6 +90,7 @@ class AuthService:
                     await self.repository.update_token(new_refresh_hash, user_id)
                     return TokenPair(access_token=new_access_token,
                                     refresh_token=new_refresh_token)
+                
         except Exception:
             logger.exception("Ошибка при обновление refresh_token пользователя")
         return None
