@@ -6,6 +6,7 @@ from app.schemas.dto import RegisterDTO, LoginDTO, TokenPair, ProductBasketDTO
 from app.services.service_user import AuthService
 from app.services.service_products import Products
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from app.services.exception import UserAlreadyExistsEmailError
 from typing import Annotated
 
 
@@ -14,12 +15,20 @@ router = APIRouter(prefix="/services", tags=["Работа с эндпоинта
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="/services/login")
 
+
+async def verify_jwt_token(token : Annotated[str, Depends(oauth2_schema)], auth_service : AuthService = Depends(get_auth_service)):
+    user_id_by_token = await auth_service.verify_user(token=token)
+    if not user_id_by_token:
+        raise 
+    return user_id_by_token
+
 @router.post("/register")
 async def registration(user: UserAdd, auth : AuthService = Depends(get_auth_service)):
+    user = auth.get_user_by_email(user.email)
+    if user:
+        raise HTTPException(status_code=409, detail="Пользователь с таким email уже существует")
     user_dto = RegisterDTO(username=user.username, email=user.email, password=user.password)
     result = await auth.registration(user_dto=user_dto)
-    if not result:
-        raise HTTPException(status_code=409, detail="Такой пользователь уже есть!")
     return result
 
 @router.post("/login")
@@ -48,10 +57,10 @@ async def login(response : Response, auth : AuthService = Depends(get_auth_servi
 
 @router.get("/profile")
 async def profile(token : Annotated[str, Depends(oauth2_schema)], auth : AuthService = Depends(get_auth_service)):
-    result = await auth.verify_user(token)
-    if not result:
+    user_id = await verify_jwt_token(token)
+    if not user_id:
         raise HTTPException(status_code=401, detail="Пользователь не авторизован")
-    return {"user_id" : result}
+    return {"user_id" : user_id}
 
 
 

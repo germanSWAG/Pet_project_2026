@@ -2,11 +2,11 @@ from sqlalchemy import select, exists, update, func, insert
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
+from app.services.exception import UserAlreadyExistsEmailError
 from app.models.user import User 
 from app.models.products import Product
 from app.models.basket import Basket
-from app.schemas.user import UserOut
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,20 +21,6 @@ class Repository:
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
-
-    async def commit(self,) -> None:
-        try:
-            await self.session.commit()
-        except Exception as e:
-            await self.session.rollback()
-            logger.exception("Проблема при фиксирование изменений")
-            raise
-
-
-    async def rollback(self,) -> None:
-        await self.session.rollback()
-        return None
-
     
     async def user_exists_email(self, email : str) -> bool:
             query = select(exists().where(User.email == email))
@@ -44,11 +30,14 @@ class Repository:
             query = select(exists().where(User.id == id))
             return await self.session.scalar(query)
 
+
     async def add_user_for_db(self, user_data : dict) -> User:
         new_user = User(**user_data)
-            
-        self.session.add(new_user)
-        await self.session.flush()
+
+        try:
+            self.session.add(new_user)
+        except SQLAlchemyError:
+            raise UserAlreadyExistsEmailError
         return new_user
        
         
@@ -82,7 +71,7 @@ class Repository:
 
         except Exception as e:
             logger.error(f"Ошибка при добавление нового товара в БД: {e}")
-            return None
+            raise Exception
 
     
     async def get_product_db(self, id : int):

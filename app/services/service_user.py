@@ -4,8 +4,7 @@ from app.services.security import password_hashing, verify_password
 from fastapi.concurrency import run_in_threadpool
 from app.repository import Repository
 from app.services.security import generate_access_token, verify_token, generate_refresh_token, hash_refresh_token
-from sqlalchemy.exc import IntegrityError
-from app.services.exception import UserAlreadyExistsEmailError, TokenError, ServiceAuthError
+from app.services.exception import UserAlreadyExistsEmailError, UserNotFound
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,6 +13,11 @@ class AuthService:
     def __init__(self, repository : Repository):
         self.repository = repository
 
+    async def get_user_by_email(self, email):
+        user = await self.repository.user_exists_email(email=email)
+        if not user:
+            raise UserNotFound
+        return user
 
     async def registration(self, user_dto : RegisterDTO):
         password_hash = await run_in_threadpool(
@@ -28,15 +32,12 @@ class AuthService:
         user['hash_password'] = password_hash
         user['refresh_token'] = hash_refresh
        
-        try:
-            async with self.repository.session.begin():
-                user_data = await self.repository.add_user_for_db(user)
-        except IntegrityError as e:
-                if "users_email_key" in str(e.orig):
-                    logger.warning(f"Ошибка при регистрации пользователя {user_dto.email}")
-                    raise UserAlreadyExistsEmailError(email=user_dto.email)
-                logger.exception(f"Неизвестная ошибка целостности базы данных")
-                raise e
+        
+        async with self.repository.session.begin():
+            user_from_db = await self.repository.add_user_for_db(user)
+            if not user_from_db:
+                raise UserAlreadyExistsEmailError
+        user_data = RegisterDTO.model_validate(user_from_db)
         access_token = generate_access_token( data={"sub" : str(user_data.id)})
         return {'data' : user_data,
                 'access_token' : access_token,
@@ -68,13 +69,12 @@ class AuthService:
                 )
 
     async def verify_user(self, token : str) -> int:
-        try:
-            user_id = verify_token(token)
-        except TokenError as e:
-                raise ServiceAuthError("Ошибка при обработке jwt токена") from e
+        user_id = verify_token(token)
+        if not user_id:
+            raise UserNotFound
         user_exists = await self.repository.user_exists_id(id=int(user_id))
         if not user_exists:
-            raise ServiceAuthError("Пользователь не найден в системе")
+            raise UserNotFound
         return user_id
        
     async def refresh(self, token : str) -> TokenPair | None:

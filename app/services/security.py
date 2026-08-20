@@ -3,7 +3,7 @@ from argon2.exceptions import VerifyMismatchError
 from datetime import datetime, timedelta, timezone
 from app.settings.config import settings
 from jose import JWTError, jwt, ExpiredSignatureError
-from exception import TokenExpiredError, TokenInvalidError, JWTGenerationError
+from app.services.exception import TokenError, JWTGenerationError
 import hashlib
 import secrets
 
@@ -45,9 +45,7 @@ def verify_token(token : str) -> int:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=settings.ALGORITHM)
         return payload["sub"]
     except ExpiredSignatureError as e:
-        raise TokenExpiredError("Срок действия токена истек") from e
-    except JWTError as e:
-        raise TokenInvalidError("Неверный токен или нарушена структура") from e
+        raise TokenError("Срок действия токена истек или неверный токен") from e
 
 def hash_refresh_token(token : str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()

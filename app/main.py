@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from app.services.exception import AppError
 import uvicorn
 from app.services.router import router as router_service
 import logging 
@@ -36,6 +37,19 @@ async def cathc_exceptions_middleware(request : Request, call_next):
 
         return JSONResponse(status_code=500, 
                             content={"detail": "Внутрення ошибка сервера"})
+
+
+@app.exception_handler(AppError)
+async def universal_app_exc_handler(request : Request, exc : AppError):
+    return JSONResponse(
+        status_code = exc.status_code,
+        content= {
+            "status" : "error",
+            "code" : exc.__class__.__name__,
+            "message" : exc.message
+        }
+    )
+
         
 
 app.include_router(router=router_service)
