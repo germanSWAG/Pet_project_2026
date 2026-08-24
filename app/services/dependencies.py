@@ -3,6 +3,7 @@ from app.repository import Repository
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.service_user import AuthService
 from app.services.service_products import Products
+from app.services.admin_service import AdminPanel
 from fastapi import Depends
 
 
@@ -19,5 +20,6 @@ async def get_products_service(repository : Repository = Depends(get_repository)
 
 
 
-
+async def get_admin_panel(repository: Repository = Depends(get_repository)):
+    return AdminPanel(repository=repository)
 

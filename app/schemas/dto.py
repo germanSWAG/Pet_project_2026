@@ -1,17 +1,27 @@
 from pydantic import BaseModel, EmailStr, HttpUrl, ConfigDict, UUID4
 
-class RegisterDTO(BaseModel):
+class CreatUserDTO(BaseModel):
     username : str
     email : EmailStr
     password : str
+    username_telegram : str = None
+
+class InternalDTO(BaseModel):
+    username : str
+    email : EmailStr
+    hash_password : str
+    is_active : bool = True
+    hash_refresh_token : str
+    username_telegram : str = None
+
+
 
    
 
-class RegisterDTOOut(BaseModel):
-    id : UUID4
+class UserOutDTO(BaseModel):
+    id : int
     username : str
     email : EmailStr
-    password : str
     model_config = ConfigDict(from_attributes=True)
 
 

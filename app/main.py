@@ -2,7 +2,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from app.services.exception import AppError
 import uvicorn
-from app.services.router import router as router_service
+from app.services.routers.users import router as router_users
+from app.services.routers.products import router as router_products
+from app.services.routers.admin import router as router_admin
 import logging 
 import traceback
 import time
@@ -52,7 +54,9 @@ async def universal_app_exc_handler(request : Request, exc : AppError):
 
         
 
-app.include_router(router=router_service)
+app.include_router(router=router_users)
+app.include_router(router=router_products)
+app.include_router(router=router_admin)
 
 
 

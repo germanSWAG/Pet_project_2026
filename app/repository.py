@@ -1,9 +1,10 @@
 from sqlalchemy import select, exists, update, func, insert
 from sqlalchemy.orm import joinedload
+from app.schemas.dto import InternalDTO
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import SQLAlchemyError
-from app.services.exception import UserAlreadyExistsEmailError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from app.services.exception import UserAlreadyExistsEmailError, DBError
 from app.models.user import User 
 from app.models.products import Product
 from app.models.basket import Basket
@@ -16,9 +17,15 @@ class Repository:
         self.session = session
 
 
-    async def get_user(self, email : str) -> User | None:
-        query = select(User).where(email == User.email)
+    async def get_user_by_email(self, email : str) -> User | None:
+        query = select(User).where(User.email == email)
         result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
+
+    async def get_user_by_id(self, id : int) -> User:
+        stmt = select(User).where(User.id == id)
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     
@@ -31,35 +38,35 @@ class Repository:
             return await self.session.scalar(query)
 
 
-    async def add_user_for_db(self, user_data : dict) -> User:
+    async def create_user_for_db(self, user_data : dict) -> User:
         new_user = User(**user_data)
-
+        self.session.add(new_user)
         try:
-            self.session.add(new_user)
-        except SQLAlchemyError:
-            raise UserAlreadyExistsEmailError
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise UserAlreadyExistsEmailError from e
         return new_user
        
         
         
-    async def update_token(self, token : str, id : int) -> None:
-        query = update(User).where(User.id == id).values(refresh_token=token)
+    async def update_token(self, hash_refresh_token : str, id : int) -> None:
+        query = update(User).where(User.id == id).values(hash_refresh_token=hash_refresh_token)
         await self.session.execute(query)
+        await self.session.commit()
 
     
-    async def user_refresh(self, refresh_token : str) -> int | None:
-        query = select(User.id).where(User.refresh_token == refresh_token).with_for_update()
+    async def user_refresh(self, hash_refresh_token : str) -> int | None:
+        query = select(User.id).where(User.hash_refresh_token == hash_refresh_token).with_for_update()
         return await self.session.scalar(query)
 
 
     async def delete_refresh_db(self, id : int) -> None:
-        query = update(User).where(User.id == id).values(refresh_token=None)
-        
+        query = update(User).where(User.id == id).values(hash_refresh_token=None)
         await self.session.execute(query)
-        await self.session.commit()
     
     
-    async def add_product_db(self, data : dict) -> dict | None:
+    async def add_product_db(self, data : dict) -> dict:
         new_product = Product(**data)
         
         try:
@@ -67,11 +74,8 @@ class Repository:
             await self.session.commit()
             await self.session.refresh(new_product)
             return data
-        
-
-        except Exception as e:
-            logger.error(f"Ошибка при добавление нового товара в БД: {e}")
-            raise Exception
+        except SQLAlchemyError:
+            raise DBError
 
     
     async def get_product_db(self, id : int):
@@ -146,6 +150,24 @@ class Repository:
             return None
 
 
+    async def get_all_users(self,):
+        stmt = select(User.id, 
+                      User.username, 
+                      User.email, 
+                      User.is_active, 
+                      User.is_admin, 
+                      User.username_telegram)
+        try:
+            result = await self.session.execute(stmt)
+            return result.mappings().all()
+        except SQLAlchemyError:
+            raise DBError
+
+
+    async def get_status_user(self, id : int) -> bool:
+        stmt = select(User.is_admin).where(User.id == id)
+        result = await self.session.scalar(stmt)
+        return result
 
         
 

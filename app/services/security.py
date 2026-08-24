@@ -1,9 +1,10 @@
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import VerifyMismatchError, InvalidHash
 from datetime import datetime, timedelta, timezone
 from app.settings.config import settings
 from jose import JWTError, jwt, ExpiredSignatureError
 from app.services.exception import TokenError, JWTGenerationError
+from app.services.exception import UserNotFoundPassword
 import hashlib
 import secrets
 
@@ -13,13 +14,12 @@ def password_hashing(password):
 
 
 
-def verify_password(hash, password):
+def verify_password(hash, password) -> True:
     try:
         result = PasswordHasher().verify(hash, password)
         return result
-    except VerifyMismatchError:
-        return False
-
+    except VerifyMismatchError or InvalidHash:
+        raise UserNotFoundPassword
 
 def generate_access_token(data : dict) -> str:
     try:
@@ -43,11 +43,11 @@ def generate_access_token(data : dict) -> str:
 def verify_token(token : str) -> int:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=settings.ALGORITHM)
-        return payload["sub"]
+        return int(payload["sub"])
     except ExpiredSignatureError as e:
         raise TokenError("Срок действия токена истек или неверный токен") from e
 
-def hash_refresh_token(token : str) -> str:
+def hashing_token(token : str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 

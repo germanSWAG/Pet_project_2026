@@ -16,6 +16,10 @@ class UserNotFound(AppError):
     status_code = 404
     message = "Пользователь с данным email не найден"
 
+class UserNotFoundPassword(AppError):
+    status_code = 401
+    message = "Неверный логин или пароль"
+
 
 class TokenError(AppError):
     """Базовое исключение для токенов"""
@@ -26,4 +30,11 @@ class TokenError(AppError):
 class JWTGenerationError(AppError):
     status_code = 500
     message = "Ошибка при генерации jwt токена"
-    pass
+
+class DBError(AppError):
+    status_code = 500
+    message = "Ошибка при работе с базой"
+
+class AccessError(AppError):
+    status_code = 403
+    message = "Пользователь не обладает достаточными правами"

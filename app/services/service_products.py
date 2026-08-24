@@ -7,13 +7,6 @@ class Products():
         self.repository = repository
 
     
-    async def add_product(self, product : ProductDTO):
-        product_data = product.model_dump()
-        result = await self.repository.add_product_db(product_data)
-        if not result:
-            return None
-        
-        return result
 
     async def get_product(self, id : int):
         product = await self.repository.get_product_db(id)
@@ -36,4 +29,8 @@ class Products():
             return None
         return ProductBasketDTO.model_validate(result)
 
+
+    async def add_product_service(self, product : ProductDTO):
+        result = await self.repository.add_product_db(product.model_dump())
+        return result
     
