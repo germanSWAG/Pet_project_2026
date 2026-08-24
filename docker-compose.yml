@@ -3,13 +3,11 @@ services:
     image: postgres:15
 
     container_name: my_test_postgres
+
     env_file:
     - app/settings/.env
 
     environment: 
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
       - LANG=C.UTF-8
 
     ports: 
@@ -17,6 +15,7 @@ services:
   
     volumes: 
     - pgdata:/var/lib/postgresql/data 
+
   api:
     build: .
     container_name: myapp

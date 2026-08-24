@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES : int 
     API_KEY : str
 
-    model_config = SettingsConfigDict(env_file=os.path.join(current_dir, ".env"), env_file_encoding="utf-8")
+
+    model_config = SettingsConfigDict(env_file=os.path.join(current_dir, ".env"), env_file_encoding="utf-8", extra="ignore")
 
     def async_get_db_url(self) -> str:
         return (f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
