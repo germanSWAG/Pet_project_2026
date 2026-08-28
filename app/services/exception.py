@@ -16,10 +16,17 @@ class UserNotFound(AppError):
     status_code = 404
     message = "Пользователь с данным email не найден"
 
+class ProductNotFound(AppError):
+    status_code = 404
+    message = "Товар не найден"
+
 class UserNotFoundPassword(AppError):
     status_code = 401
     message = "Неверный логин или пароль"
 
+class NotFound(AppError):
+    status_code = 404
+    message = "Такой страницы не существует"
 
 class TokenError(AppError):
     """Базовое исключение для токенов"""
@@ -38,3 +45,7 @@ class DBError(AppError):
 class AccessError(AppError):
     status_code = 403
     message = "Пользователь не обладает достаточными правами"
+
+class ProductExists(AppError):
+    status_code = 409
+    message = "Такой товар уже существует"

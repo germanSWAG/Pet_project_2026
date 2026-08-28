@@ -43,6 +43,7 @@ async def cathc_exceptions_middleware(request : Request, call_next):
 
 @app.exception_handler(AppError)
 async def universal_app_exc_handler(request : Request, exc : AppError):
+    logger.error(f"Ошибка приложения {exc.__class__.__name__} на URL - {request.url.path} : {exc.message}")
     return JSONResponse(
         status_code = exc.status_code,
         content= {

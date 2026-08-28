@@ -1,5 +1,8 @@
 from app.repository import Repository
-from app.services.exception import AccessError
+from app.services.exception import AccessError, UserNotFound
+from app.schemas.dto import RecordsUsers
+from typing import Any
+
 
 
 
@@ -14,7 +17,14 @@ class AdminPanel():
             raise AccessError
         return status
 
-    async def get_all_users(self, ) -> list[dict]:
-        all_users = await self.repository.get_all_users()
+    async def get_all_users(self, page : int, page_size : int) -> dict[str, Any]:
+        offset = (page - 1) * page_size
+        all_users = await self.repository.get_all_users(offset, page_size)
         return all_users
+
+    async def get_user_admin_service(self, id : int) -> dict:
+        user = await self.repository.get_user_by_id(id=id)
+        if not user:
+            raise UserNotFound
+        return user
 

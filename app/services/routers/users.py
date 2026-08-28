@@ -68,16 +68,14 @@ async def profile(user_id : Annotated[int, Depends(get_current_user)], auth_serv
 
 
 
-    
 @router.post("/token")
-async def update_tokens(response : Response, request : Request, user_id : int = Depends(get_current_user), auth : AuthService = Depends(get_auth_service)):
+async def update_tokens(response : Response, request : Request, auth : AuthService = Depends(get_auth_service)):
     refresh_token = request.cookies.get("refresh_token")
     if refresh_token is None:
         raise HTTPException(
             status_code=401,
             detail="Недействительный или истекший refresh токен"
         )
-    print(user_id)
     tokens = await auth.refresh(refresh_token)
     if not tokens:
         raise HTTPException(status_code=401, detail="Не найден refresh токен")

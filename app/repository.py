@@ -1,14 +1,14 @@
 from sqlalchemy import select, exists, update, func, insert
 from sqlalchemy.orm import joinedload
-from app.schemas.dto import InternalDTO
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from app.services.exception import UserAlreadyExistsEmailError, DBError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, NoResultFound
+from app.services.exception import UserAlreadyExistsEmailError, DBError, ProductNotFound, ProductExists, NotFound
 from app.models.user import User 
 from app.models.products import Product
 from app.models.basket import Basket
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -74,14 +74,18 @@ class Repository:
             await self.session.commit()
             await self.session.refresh(new_product)
             return data
-        except SQLAlchemyError:
-            raise DBError
+        except IntegrityError:
+            raise ProductExists
 
     
     async def get_product_db(self, id : int):
-        query = select(Product).where(Product.id == id)
-        result = await self.session.execute(query)
-        return result.scalar()
+        try:
+            product = await self.session.get(Product, id)
+            if product is None:
+                raise ProductNotFound
+            return product
+        except SQLAlchemyError:
+            raise DBError
 
 
 
@@ -93,18 +97,16 @@ class Repository:
             result = await self.session.scalars(stmt)
             total = await self.session.scalar(select(func.count()).select_from(Product))
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Ошибка при получение всех данных о товаре. Traceback - {e}")
-            return None
+            raise ProductNotFound
         return {"total" : total, "items" : result.all()}
 
 
 
     async def add_basket(self, user_id: int,
                         product_id: int,
-                        count : int) -> Basket | None:
-        if count <=0:
-            raise ValueError("count должен быть положительным")
+                        count : int) -> Basket:
         
         stmt = insert(Basket).values(user_id=user_id,
                                     product_id=product_id, 
@@ -121,16 +123,14 @@ class Repository:
             result = await self.session.execute(stmt)
             await self.session.commit()
             return result.scalar_one()
-        except Exception:
-            await self.session.rollback()
-            logger.exception(f'Ошибка при работе с базой. \n'
-                             f'Функция - {self.add_basket.__name__} \n'
-                            )
-            return None
         
+        except IntegrityError:
+            raise ProductNotFound
+        
+        except SQLAlchemyError:
+            raise DBError
             
-            
-
+        
     async def get_basket_db(self, user_id : int) -> list[Basket] | None:
         stmt = select(Basket).where(
             Basket.user_id == user_id
@@ -144,22 +144,23 @@ class Repository:
             items = result.scalars().all()
             return items
 
-        except Exception:
+        except NoResultFound:
             logger.exception(f'Ошибка при работе с базой. \n'
                          f'Функция - {self.get_basket_db.__name__}')
-            return None
+            raise ProductNotFound
 
-
-    async def get_all_users(self,):
+    async def get_all_users(self, offset: int, limit: int) -> dict[str, Any]:
         stmt = select(User.id, 
                       User.username, 
                       User.email, 
                       User.is_active, 
                       User.is_admin, 
-                      User.username_telegram)
+                      User.username_telegram).offset(offset).limit(limit)
         try:
             result = await self.session.execute(stmt)
-            return result.mappings().all()
+            total = await self.session.scalar(select(func.count()).select_from(User))
+            user_list = result.mappings().all()
+            return {"total": total, "users" : user_list}
         except SQLAlchemyError:
             raise DBError
 
